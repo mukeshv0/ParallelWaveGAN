@@ -3,6 +3,7 @@ This is a fork of the [original](https://github.com/kan-bayashi/ParallelWaveGAN)
 
 | Models |Dataset | Commit            | Audio Sample  | Details |
 | [PWGAN](https://drive.google.com/drive/folders/1kqIgxSrVoCA-KdpiOYqsVz5kbZyHVtK4?usp=sharing) | LJSpeech | [fca88f9](https://github.com/erogol/ParallelWaveGAN/tree/fca88f9) | soon... | Trained with GT spectrograms|
+| [MelGAN](https://drive.google.com/drive/folders/1TSPRdm8N50QhKDmYaje7RlJrGH635SoX?usp=sharing) | LJSpeech |[22018e6]((https://github.com/erogol/ParallelWaveGAN/tree/22018e6) | ... | Trained with GT spectrograms|
 
 # Basic workflow
 1. Create spectrograms using TTS based audio processing 
