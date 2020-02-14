@@ -1,9 +1,4 @@
-# This is the hyperparameter configuration file for Parallel WaveGAN.
-# Please make sure this is adjusted for the LJSpeech dataset. If you want to
-# apply to the other dataset, you might need to carefully change some parameters.
-# This configuration requires 12 GB GPU memory and takes ~5 days on TITAN V.
-# Compared to v1, this configuration utilizes residual architecture Discriminator.
-# Since the discriminator is bigger than v1, batch size is reduced 6 -> 5.
+# Melgan generator with PWGAN Discriminator bigger version
 
 datasets:
     [
