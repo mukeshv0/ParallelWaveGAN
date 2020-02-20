@@ -1,10 +1,11 @@
+# Best model so far
 # Melgan generator with small PWGAN discriminator
 
 datasets:
     [
         {
             name: "tts_gen",
-            path: "/root/LJSpeech-1.1/pwgan-newnew/",
+            path: "/home/erogol/Data/LJSpeech-1.1/pwgan-256/",
             metafile_train: "metadata.txt",
             metafile_val: null,
             stats: null
@@ -18,8 +19,8 @@ audio:
   sample_rate: 22050     # Sampling rate.
   num_mels: 80
   num_freq: 1025           # FFT size.
-  frame_length_ms: 50            # Hop size.
-  frame_shift_ms: 12.5         # Window length.
+  frame_length_ms: 50
+  frame_shift_ms: 12.5
   preemphasis: 0.98
   min_level_db: -100
   ref_level_db: 20
@@ -45,7 +46,7 @@ generator_params:
     channels: 512                 # Initial number of channels for conv layers.
     upsample_scales: [5, 5, 11] # List of Upsampling scales.
     stack_kernel_size: 3          # Kernel size of dilated conv layers in residual stack.
-    stacks: 3                     # Number of stacks in a single residual stack module.
+    stacks: 4                     # Number of stacks in a single residual stack module.
     use_weight_norm: True         # Whether to use weight normalization.
     use_causal_conv: False        # Whether to use causal convolution.
 
