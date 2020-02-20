@@ -3,7 +3,7 @@ import soundfile as sf
 import numpy as np
 import scipy.io
 import scipy.signal
- 
+
 
 class AudioProcessor(object):
     def __init__(self,
@@ -12,6 +12,8 @@ class AudioProcessor(object):
                  min_level_db=None,
                  frame_shift_ms=None,
                  frame_length_ms=None,
+                 hop_length=None,
+                 win_length=None,
                  ref_level_db=None,
                  num_freq=None,
                  power=None,
@@ -49,7 +51,12 @@ class AudioProcessor(object):
         self.do_trim_silence = do_trim_silence
         self.trim_db = trim_db
         self.sound_norm = sound_norm
-        self.n_fft, self.hop_length, self.win_length = self._stft_parameters()
+        if hop_length is None:
+            self.n_fft, self.hop_length, self.win_length = self._stft_parameters()
+        else:
+            self.hop_length = hop_length
+            self.win_length = win_length
+            self.n_fft = (self.num_freq - 1) * 2
         assert min_level_db != 0.0, " [!] min_level_db is 0"
         members = vars(self)
         for key, value in members.items():
@@ -183,7 +190,6 @@ class AudioProcessor(object):
         mel = self._normalize(S)
         return mel
 
-
     def _griffin_lim(self, S):
         angles = np.exp(2j * np.pi * np.random.rand(*S.shape))
         S_complex = np.abs(S).astype(np.complex)
@@ -214,16 +220,6 @@ class AudioProcessor(object):
             if np.max(wav[x:x + window_length]) < threshold:
                 return x + hop_length
         return len(wav)
-
-    def padding_correction(self, x, fsize, fshift, pad_both_sides=False):
-        '''Correct librosa padding in spec. computation'''
-        pad = (x.shape[0] // self.hop_length + 1) * self.hop_length - x.shape[0]
-        if pad_both_sides:
-            l_pad, r_pad = pad // 2, pad // 2 + pad % 2			
-        else:
-            l_pad, r_pad = 0, pad
-        x_padded = np.pad(x, (l_pad, r_pad), mode='constant', constant_values=0.)
-        return x_padded
 
     def trim_silence(self, wav):
         """ Trim silent parts with a threshold and 0.01 sec margin """

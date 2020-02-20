@@ -143,12 +143,10 @@ class MelGANGenerator(torch.nn.Module):
 
         """
         pad_size = 2
-        if not isinstance(c, torch.FloatTensor): 
-            # B x D x T
-            c = torch.FloatTensor(c).unsqueeze(0).transpose(2, 1)
         c = c.to(self.melgan[1].weight.device)
         c = torch.nn.functional.pad(c, (pad_size, pad_size), 'replicate')
-        return self.melgan(c).squeeze()
+        wav = self.melgan(c)
+        return wav
 
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
@@ -230,7 +228,7 @@ class MelGANDiscriminator(torch.nn.Module):
         self.layers += [
             torch.nn.Sequential(
                 getattr(torch.nn, pad)((sum(kernel_sizes) - 1) // 2, **pad_params),
-                torch.nn.Conv1d(in_channels, channels, sum(kernel_sizes), bias=bias),
+                torch.nn.Conv1d(in_channels, channels, sum(kernel_sizes), bias=bias),  # diff 
                 getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params),
             )
         ]

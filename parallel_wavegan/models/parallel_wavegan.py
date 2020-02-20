@@ -162,27 +162,19 @@ class ParallelWaveGANGenerator(torch.nn.Module):
         return x
 
     @torch.no_grad()
-    def inference(self, c, hop_size, fold_num=1):
+    def inference(self, c, hop_size):
         """Calculate forward propagation.
         Args:
             c (Tensor): Local conditioning auxiliary features (C ,T').
             hop_size (int): hop length used to train the model.
-            fold_num (int): number of folds to batchify the given input.
+            # fold_num (int): number of folds to batchify the given input.
         Returns:
             Tensor: Output tensor (B, out_channels, T)
         """
         pad_size = self.aux_context_window
-        if not isinstance(c, torch.FloatTensor): 
-            # B x D x T
-            c = torch.FloatTensor(c).unsqueeze(0).transpose(2, 1)
         c = c.to(self.first_conv.weight.device)
 
-        if fold_num > 1:
-            remainder = fold_num - c.shape[2] % fold_num
-            c = torch.nn.functional.pad(c, (0, remainder), 'constant')
-            c = c.view(c.shape[1], fold_num, c.shape[2]//fold_num).permute(1,0,2)
-
-        x = torch.randn(fold_num, 1, c.shape[-1] * hop_size).to(self.first_conv.weight.device)
+        x = torch.randn(1, 1, c.shape[-1] * hop_size).to(self.first_conv.weight.device)
         c = torch.nn.functional.pad(c, (pad_size, pad_size), 'replicate')
 
         B, _, T = x.size()
@@ -205,31 +197,7 @@ class ParallelWaveGANGenerator(torch.nn.Module):
         x = skips
         for f in self.last_conv_layers:
             x = f(x)
-        return x.flatten()
-
-    def fold_with_overlap(self, x, target, overlap):
-        _, features, seq_len = x.shape
-
-        # Calculate variables needed
-        num_folds = (seq_len - overlap) // (target + overlap)
-        extended_len = num_folds * (overlap + target) + overlap
-        remaining = seq_len - extended_len
-
-        # Pad if some time steps poking out
-        if remaining != 0:
-            num_folds += 1
-            padding = target + 2 * overlap - remaining
-            x = self.pad_tensor(x, padding, side='after')
-
-        folded = torch.zeros(num_folds, target + 2 * overlap, features).cuda()
-
-        # Get the values for the folded tensor
-        for i in range(num_folds):
-            start = i * (target + overlap)
-            end = start + target + 2 * overlap
-            folded[i] = x[:, :, start:end]
-
-        return folded
+        return x
 
     def pad_tensor(self, x, pad, side='both'):
         # NB - this is just a quick method i need right now
