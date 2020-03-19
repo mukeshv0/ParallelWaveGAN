@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import math, pickle, os, glob
 import numpy as np
 from tqdm import tqdm
-# from parallel_wavegan.utils.audio import AudioProcessor
 from TTS.utils.audio import AudioProcessor
 from multiprocessing import Pool
 
@@ -19,7 +18,7 @@ def get_files(path, extension=".wav"):
     return filenames
 
 
-def process_file(path):
+def _process_file(path):
     wav = ap.load_wav(path)
     mel = ap.melspectrogram(wav)
     wav = wav.astype(np.float32)
@@ -37,7 +36,7 @@ def process_file(path):
 
 def extract_feats(wav_path):
     idx = wav_path.split("/")[-1][:-4]
-    m, wav = process_file(wav_path)   
+    m, wav = _process_file(wav_path)
     mel_path = f"{MEL_PATH}{idx}.npy"
     np.save(mel_path, m.astype(np.float32), allow_pickle=False)
     return wav_path, mel_path
@@ -52,7 +51,7 @@ if __name__ == "__main__":
         "--num_procs", type=int, default=4, help="number of parallel processes."
     )
     parser.add_argument(
-        "--data_path", type=str, default='', help="data path to overwrite config.json."
+        "--data_path", type=str, default='', help="path to audio files."
     )
     parser.add_argument(
         "--out_path", type=str, default='', help="destination to write files."
@@ -60,7 +59,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ignore_errors", type=bool, default=False, help="ignore bad files."
     )
-    
     args = parser.parse_args()
 
     # load config
@@ -71,24 +69,21 @@ if __name__ == "__main__":
     ap = AudioProcessor(**config['audio'])
 
     SEG_PATH = config['data_path']
-    # OUT_PATH = os.path.join(args.out_path, CONFIG.run_name, "data/")
     OUT_PATH = args.out_path
-    QUANT_PATH = os.path.join(OUT_PATH, "wavs/")
     MEL_PATH = os.path.join(OUT_PATH, "mel/")
     os.makedirs(OUT_PATH, exist_ok=True)
-    os.makedirs(QUANT_PATH, exist_ok=True)
     os.makedirs(MEL_PATH, exist_ok=True)
 
     wav_files = get_files(SEG_PATH)
     print(" > Number of audio files : {}".format(len(wav_files)))
 
     wav_file = wav_files[1]
-    m, wav = process_file(wav_file)
+    m, wav = _process_file(wav_file)
 
     # This will take a while depending on size of dataset
     with Pool(args.num_procs) as p:
         dataset_ids = list(tqdm(p.imap(extract_feats, wav_files), total=len(wav_files)))
-    # for wav_file in wav_files:
+    #for wav_file in wav_files:
     #     extract_feats(wav_file)
 
     # save metadata
