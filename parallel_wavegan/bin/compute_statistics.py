@@ -1,81 +1,78 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2019 Tomoki Hayashi
-#  MIT License (https://opensource.org/licenses/MIT)
-
-"""Calculate statistics of feature files."""
-
-import argparse
-import logging
 import os
+import argparse
 
 import numpy as np
-import yaml
-
-from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-from parallel_wavegan.datasets import MelDataset
-from parallel_wavegan.utils import read_hdf5
-from parallel_wavegan.utils import write_hdf5
-
+from TTS.datasets.preprocess import load_meta_data
+from TTS.utils.generic_utils import load_config
+from TTS.utils.audio import AudioProcessor
 
 def main():
     """Run preprocessing process."""
     parser = argparse.ArgumentParser(
-        description="Compute mean and variance of dumped raw features "
-                    "(See detail in parallel_wavegan/bin/compute_statistics.py).")
-    parser.add_argument("--rootdir", type=str, required=True,
-                        help="directory including feature files.")
-    parser.add_argument("--config", type=str, required=True,
-                        help="yaml format configuration file.")
-    parser.add_argument("--dumpdir", default=None, type=str,
-                        help="directory to save statistics. if not provided, "
-                             "stats will be saved in the above root directory. (default=None)")
-    parser.add_argument("--verbose", type=int, default=1,
-                        help="logging level. higher is more logging. (default=1)")
+        description="Compute mean and variance of spectrogtram features.")
+    parser.add_argument("--config_path", type=str, required=True,
+                        help="TTS config file path.")
+    parser.add_argument("--out_path", default=None, type=str,
+                        help="directory to save the output file.")
     args = parser.parse_args()
 
-    # set logger
-    if args.verbose > 1:
-        logging.basicConfig(
-            level=logging.DEBUG, format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
-    elif args.verbose > 0:
-        logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
-    else:
-        logging.basicConfig(
-            level=logging.WARN, format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
-        logging.warning('Skip DEBUG/INFO messages')
-
     # load config
-    with open(args.config) as f:
-        config = yaml.load(f, Loader=yaml.Loader)
-    config.update(vars(args))
+    CONFIG = load_config(args.config_path)
+    CONFIG.audio['signal_norm'] = False  # do not apply earlier normalization
+    CONFIG.audio['stats_path'] = None  # discard pre-defined stats
 
-    # check directory existence
-    if args.dumpdir is None:
-        args.dumpdir = os.path.dirname(args.rootdir)
-    if not os.path.exists(args.dumpdir):
-        os.makedirs(args.dumpdir)
+    # load audio processor
+    ap = AudioProcessor(**CONFIG.audio)
 
-    # get dataset
-    mel_query = "*.npy"
-    mel_load_fn = np.load
-    dataset = MelDataset(
-        args.rootdir,
-        mel_query=mel_query,
-        mel_load_fn=mel_load_fn)
-    logging.info(f"The number of files = {len(dataset)}.")
+    # load the meta data of target dataset
+    dataset_items = load_meta_data(CONFIG.datasets)[0]  # take only train data
+    print(f" > There are {len(dataset_items)} files.")
 
-    # calculate statistics
-    scaler = StandardScaler()
-    for mel in tqdm(dataset):
-        scaler.partial_fit(mel)
+    mel_sum = 0
+    mel_square_sum = 0
+    linear_sum = 0
+    linear_square_sum = 0
+    N = 0
+    for item in tqdm(dataset_items):
+        # compute features
+        wav = ap.load_wav(item[1])
+        linear = ap.spectrogram(wav)
+        mel = ap.melspectrogram(wav)
 
-    stats = np.stack([scaler.mean_, scaler.scale_], axis=0)
-    np.save(os.path.join(args.dumpdir, "stats.npy"), stats.astype(np.float32), allow_pickle=False)
+        # compute stats
+        N += mel.shape[1]
+        mel_sum += mel.sum(1)
+        linear_sum += linear.sum(1)
+        mel_square_sum += (mel ** 2).sum(axis=1)
+        linear_square_sum += (linear ** 2).sum(axis=1)
+
+    mel_mean = mel_sum / N
+    mel_scale = np.sqrt(mel_square_sum / N - mel_mean ** 2)
+    linear_mean = linear_sum / N
+    linear_scale = np.sqrt(linear_square_sum / N - linear_mean ** 2)
+
+    output_file_path = os.path.join(args.out_path, "scale_stats.npy")
+    stats = {}
+    stats['mel_mean'] = mel_mean
+    stats['mel_std'] = mel_scale
+    stats['linear_mean'] = linear_mean
+    stats['linear_std'] = linear_scale
+
+    # set default config values for mean-var scaling
+    CONFIG.audio['stats_path'] = output_file_path
+    CONFIG.audio['signal_norm'] = True
+    # remove redundant values
+    del CONFIG.audio['max_norm']
+    del CONFIG.audio['min_level_db']
+    del CONFIG.audio['symmetric_norm']
+    del CONFIG.audio['clip_norm']
+    stats['audio_config'] = CONFIG.audio
+    np.save(output_file_path, stats, allow_pickle=True)
 
 
 if __name__ == "__main__":

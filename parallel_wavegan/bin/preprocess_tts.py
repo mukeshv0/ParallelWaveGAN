@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import math, pickle, os, glob
 import numpy as np
 from tqdm import tqdm
-from parallel_wavegan.utils.audio import AudioProcessor
+# from parallel_wavegan.utils.audio import AudioProcessor
+from TTS.utils.audio import AudioProcessor
 from multiprocessing import Pool
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -87,6 +88,8 @@ if __name__ == "__main__":
     # This will take a while depending on size of dataset
     with Pool(args.num_procs) as p:
         dataset_ids = list(tqdm(p.imap(extract_feats, wav_files), total=len(wav_files)))
+    # for wav_file in wav_files:
+    #     extract_feats(wav_file)
 
     # save metadata
     with open(os.path.join(OUT_PATH, "metadata.txt"), "w") as f:
