@@ -30,7 +30,6 @@ class AudioMelDataset(Dataset):
                  mel_length_threshold=None,
                  return_filename=False,
                  allow_cache=False,
-                 stats=None,
                  augment=True
                  ):
         """Initialize dataset.
@@ -49,15 +48,6 @@ class AudioMelDataset(Dataset):
         # find all of audio and mel files
         audio_files = [file_id[0] for file_id in file_ids]
         mel_files = [file_id[1] for file_id in file_ids]
-
-        # set normalizer
-        if stats is not None:
-            print(f"Mean-Var normalizer is active")
-            self.scaler = StandardScaler()
-            self.scaler.mean_ = np.load(stats)[0]
-            self.scaler.scale_ = np.load(stats)[1]
-        else:
-            self.scaler = stats
 
         # filter by threshold
         if audio_length_threshold is not None:
@@ -120,9 +110,6 @@ class AudioMelDataset(Dataset):
 
         audio = self.audio_load_fn(self.audio_files[idx])
         mel = self.mel_load_fn(self.mel_files[idx])
-
-        if self.scaler:
-            mel = self.scaler.transform(mel)
 
         audio = np.pad(audio, (0, self.ap.n_fft), mode="edge")
         audio = audio[:len(mel) * self.ap.hop_length]
