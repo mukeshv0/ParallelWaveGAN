@@ -9,9 +9,16 @@ import fnmatch
 import logging
 import os
 import sys
+import yaml
 
 import h5py
 import numpy as np
+
+
+def load_config(config_path):
+    with open(config_path) as f:
+        config = yaml.load(f, Loader=yaml.Loader)
+    return config
 
 
 def find_files(root_dir, query="*.wav", include_root_dir=True):
