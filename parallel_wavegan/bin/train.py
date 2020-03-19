@@ -733,7 +733,8 @@ def main():
             ap=ap,
             mel_length_threshold=mel_length_threshold,
             allow_cache=config.get("allow_cache", False),
-            augment=config['augment'],)
+            augment=config['augment']
+        )
     }
 
     # get data loader
@@ -809,12 +810,8 @@ def main():
     # check upsample scales vs hop size
     assert np.prod(model['generator'].upsample_scales) == ap.hop_length, " [!] upsample_scales needs to align hop_size"
 
-    stft_loss_params = {
-        "fft_sizes": [2 * ap.n_fft, ap.n_fft, ap.n_fft // 2],
-        "hop_sizes": [2 * ap.hop_length, ap.hop_length, ap.hop_length // 2],
-        "win_lengths": [2 * ap.win_length, ap.win_length, ap.win_length // 2],
-        "window": "hann_window"         # Window function for STFT-based loss
-    }
+    stft_loss_params = config['stft_loss_params']
+    
     criterion = {
         "stft": MultiResolutionSTFTLoss(
             **stft_loss_params).to(device),
