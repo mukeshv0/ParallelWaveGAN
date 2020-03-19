@@ -33,6 +33,7 @@ from parallel_wavegan.losses import MultiResolutionSTFTLoss, HingeLoss
 from parallel_wavegan.optimizers import RAdam
 from parallel_wavegan.utils import read_hdf5
 from parallel_wavegan.utils.audio import AudioProcessor
+from parallel_wavegan.utils.utils import load_config
 
 # set to avoid matplotlib error in CLI environment
 matplotlib.use("Agg")
@@ -694,8 +695,7 @@ def main():
         os.makedirs(args.outdir)
 
     # load and save config
-    with open(args.config) as f:
-        config = yaml.load(f, Loader=yaml.Loader)
+    config = load_config(args.config)
     config.update(vars(args))
     config["version"] = parallel_wavegan.__version__  # add version info
 
