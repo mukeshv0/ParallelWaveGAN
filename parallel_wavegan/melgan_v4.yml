@@ -1,0 +1,147 @@
+# MelGAN Generator and MelGAN Discriminator.
+# for 256 hop_length
+
+datasets:
+    [
+        {
+            name: "ljspeech",
+            path: "/home/erogol/Data/LJSpeech-1.1/pwgan/",
+            meta_file_train: "metadata.txt",
+            meta_file_val: null,
+        }
+    ]
+
+###########################################################
+#                FEATURE EXTRACTION SETTING               #
+###########################################################
+audio:
+  sample_rate: 22050     # Sampling rate.
+  num_mels: 80
+  num_freq: 513           # FFT size.
+  frame_length_ms: null            # Hop size.
+  frame_shift_ms: null         # Window length.
+  win_length: 1024
+  hop_length: 256
+  preemphasis: 0.0
+  min_level_db: -100
+  ref_level_db: 20
+  signal_norm: True
+  symmetric_norm: true
+  max_norm: 1.0
+  clip_norm: True
+  mel_fmin: 0.0
+  mel_fmax: 8000.0
+  do_trim_silence: false
+  do_sound_norm: false
+  trim_db: 60
+  stats_path: "/home/erogol/Data/LJSpeech-1.1/scale_stats_pwgan.npy"
+
+# add random noise to input spectrograms as in melgan paper
+augment: False
+
+###########################################################
+#         GENERATOR NETWORK ARCHITECTURE SETTING          #
+###########################################################
+generator_type: "MelGANGenerator" # Generator type.
+generator_params:
+    in_channels: 80               # Number of input channels.
+    out_channels: 1               # Number of output channels.
+    kernel_size: 7                # Kernel size of initial and final conv layers.
+    channels: 512                 # Initial number of channels for conv layers.
+    upsample_scales: [8, 8, 2, 2] # List of Upsampling scales.
+    stack_kernel_size: 3          # Kernel size of dilated conv layers in residual stack.
+    stacks: 3                     # Number of stacks in a single residual stack module.
+    use_weight_norm: True         # Whether to use weight normalization.
+    use_causal_conv: False        # Whether to use causal convolution.
+
+###########################################################
+#       DISCRIMINATOR NETWORK ARCHITECTURE SETTING        #
+###########################################################
+discriminator_type: "MelGANMultiScaleDiscriminator" # Discriminator type.
+discriminator_params:
+    in_channels: 1                    # Number of input channels.
+    out_channels: 1                   # Number of output channels.
+    scales: 3                         # Number of multi-scales.
+    downsample_pooling: "AvgPool1d"   # Pooling type for the input downsampling.
+    downsample_pooling_params:        # Parameters of the above pooling function.
+        kernel_size: 4
+        stride: 2
+        padding: 1
+        count_include_pad: False
+    kernel_sizes: [5, 3]              # List of kernel size.
+    channels: 16                      # Number of channels of the initial conv layer.
+    max_downsample_channels: 1024     # Maximum number of channels of downsampling layers.
+    downsample_scales: [4, 4, 4, 4]   # List of downsampling scales.
+    nonlinear_activation: "LeakyReLU" # Nonlinear activation function.
+    nonlinear_activation_params:      # Parameters of nonlinear activation function.
+        negative_slope: 0.2
+    use_weight_norm: True             # Whether to use weight norm.
+
+###########################################################
+#                   STFT LOSS SETTING                     #
+###########################################################
+stft_loss_params:
+    fft_sizes: [1024, 2048, 512]  # List of FFT size for STFT-based loss.
+    hop_sizes: [120, 240, 50]     # List of hop size for STFT-based loss
+    win_lengths: [600, 1200, 240] # List of window length for STFT-based loss.
+    window: "hann_window"         # Window function for STFT-based loss
+
+
+###########################################################
+#                  LOSS CONFIGURATION                     #
+###########################################################
+use_feat_match_loss: true # Whether to use feature matching loss.
+use_stft_loss: true     # if this is False, lambda_adv=1 and there is no point to skip discriminator_train_start_steps=0.
+adv_loss_type: "mse"
+
+###########################################################
+#               ADVERSARIAL LOSS SETTING                  #
+###########################################################
+lambda_feat_match: 10.0   # Loss balancing coefficient for feature matching loss. # UPDATED
+lambda_adv: 1.0           # Loss balancing coefficient for adversarial loss.
+
+###########################################################
+#                  DATA LOADER SETTING                    #
+###########################################################
+batch_size: 16             # Batch size.
+batch_max_steps: 16000     # Length of each audio in batch. Make sure dividable by hop_size.
+pin_memory: true           # Whether to pin memory in Pytorch DataLoader.
+num_workers: 2             # Number of workers in Pytorch DataLoader.
+remove_short_samples: true # Whether to remove samples the length of which are less than batch_max_steps.
+allow_cache: false          # Whether to allow cache in dataset. If true, it requires cpu memory.
+
+###########################################################
+#             OPTIMIZER & SCHEDULER SETTING               #
+###########################################################
+generator_optimizer_params:
+    lr: 0.0001             # Generator's learning rate.
+    eps: 1.0e-6            # Generator's epsilon.
+    weight_decay: 0.0      # Generator's weight decay coefficient.
+generator_scheduler_params:
+    step_size: 2000000     # Generator's scheduler step size.
+    gamma: 0.5             # Generator's scheduler gamma.
+                           # At each step size, lr will be multiplied by this parameter.
+generator_grad_norm: 10    # Generator's gradient norm.
+discriminator_optimizer_params:
+    lr: 0.00005            # Discriminator's learning rate.
+    eps: 1.0e-6            # Discriminator's epsilon.
+    weight_decay: 0.0      # Discriminator's weight decay coefficient.
+discriminator_scheduler_params:
+    step_size: 2000000     # Discriminator's scheduler step size.
+    gamma: 0.5             # Discriminator's scheduler gamma.
+                           # At each step size, lr will be multiplied by this parameter.
+discriminator_grad_norm: 10 # Discriminator's gradient norm.
+
+###########################################################
+#                    INTERVAL SETTING                     #
+###########################################################
+discriminator_train_start_steps: 0 # Number of steps to start to train discriminator.
+train_max_steps: 2000000                # Number of training steps.
+save_interval_steps: 5000               # Interval steps to save checkpoint.
+eval_interval_steps: 1000               # Interval steps to evaluate the network.
+log_interval_steps: 100                 # Interval steps to record the training log.
+
+###########################################################
+#                     OTHER SETTING                       #
+###########################################################
+num_save_intermediate_results: 4  # Number of results to be saved as intermediate results.
