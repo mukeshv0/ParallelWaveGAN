@@ -128,6 +128,23 @@ class MelGANGenerator(torch.nn.Module):
         """
         return self.melgan(c)
 
+    @torch.no_grad()
+    def inference(self, c):
+        """Calculate forward propagation.
+
+        Args:
+            c (Tensor): Input tensor (B, channels, T).
+
+        Returns:
+            Tensor: Output tensor (B, 1, T ** prod(upsample_scales)).
+
+        """
+        pad_size = 2
+        c = c.to(self.melgan[1].weight.device)
+        c = torch.nn.functional.pad(c, (pad_size, pad_size), 'replicate')
+        wav = self.melgan(c)
+        return wav
+
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
         def _remove_weight_norm(m):
