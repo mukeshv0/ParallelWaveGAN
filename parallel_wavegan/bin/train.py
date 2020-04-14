@@ -573,6 +573,9 @@ class Collater(object):
         y_batch = torch.tensor(y_batch, dtype=torch.float).unsqueeze(1)  # (B, 1, T)
         c_batch = torch.tensor(c_batch, dtype=torch.float).transpose(2, 1)  # (B, C, T')
 
+        # TODO: argument this
+        c_batch += torch.randn_like(c_batch) * 0.5
+
         # make input noise signal batch tensor
         if self.use_noise_input:
             z_batch = torch.randn(y_batch.size())  # (B, 1, T)
