@@ -456,6 +456,7 @@ class Trainer(object):
 
             # plot figure and save it
             figname = os.path.join(dirname, f"{idx}.png")
+            fig = plt.figure()
             plt.subplot(2, 1, 1)
             plt.plot(y)
             plt.title("groundtruth speech")
@@ -465,14 +466,15 @@ class Trainer(object):
             plt.tight_layout()
             plt.savefig(figname)
             plt.close()
+            self.writer.add_figure('speech comparison', fig, self.steps )
 
             # save as wavfile
             y = np.clip(y, -1, 1)
             y_ = np.clip(y_, -1, 1)
             sf.write(figname.replace(".png", "_ref.wav"), y,
-                     self.config["sampling_rate"], "PCM_16")
+                     self.config['audio']['sample_rate'], "PCM_16")
             sf.write(figname.replace(".png", "_gen.wav"), y_,
-                     self.config["sampling_rate"], "PCM_16")
+                     self.config['audio']['sample_rate'], "PCM_16")
 
             if idx >= self.config["num_save_intermediate_results"]:
                 break
