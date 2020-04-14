@@ -614,6 +614,9 @@ class Collater(object):
         if self.use_noise_augmentation:
             c_batch += torch.randn_like(c_batch) * self.noise_augmentation_scale
 
+        # TODO: argument this
+        c_batch += torch.randn_like(c_batch) * 0.5
+
         # make input noise signal batch tensor
         if self.use_noise_input:
             z_batch = torch.randn(y_batch.size())  # (B, 1, T)
