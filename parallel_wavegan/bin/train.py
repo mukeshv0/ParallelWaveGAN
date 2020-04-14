@@ -506,7 +506,7 @@ class Trainer(object):
             sf.write(figname.replace(".png", "_gen.wav"), y_,
                      self.config['audio']['sample_rate'], "PCM_16")
             self.writer.add_audio('generated_audio', y_, self.steps, sample_rate=self.config["audio"]["sample_rate"])
-        
+
             if idx >= self.config["num_save_intermediate_results"]:
                 break
 
