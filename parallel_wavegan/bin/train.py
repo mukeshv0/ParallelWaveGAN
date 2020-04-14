@@ -661,7 +661,7 @@ def main():
 
     # get dataset
     if config["remove_short_samples"]:
-        mel_length_threshold = config["batch_max_steps"] // config["hop_size"] + \
+        mel_length_threshold = config["batch_max_steps"] // config['audio']['hop_length'] + \
             2 * config["generator_params"].get("aux_context_window", 0)
     else:
         mel_length_threshold = None
@@ -722,7 +722,7 @@ def main():
     # get data loader
     collater = Collater(
         batch_max_steps=config["batch_max_steps"],
-        hop_size=config["hop_size"],
+        hop_size=config['audio']['hop_length'],
         # keep compatibility
         aux_context_window=config["generator_params"].get("aux_context_window", 0),
         # keep compatibility
