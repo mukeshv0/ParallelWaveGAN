@@ -69,6 +69,7 @@ class ParallelWaveGANGenerator(torch.nn.Module):
         self.layers = layers
         self.stacks = stacks
         self.kernel_size = kernel_size
+        self.aux_context_window = aux_context_window
 
         # check the number of layers and stacks
         assert layers % stacks == 0
@@ -158,6 +159,56 @@ class ParallelWaveGANGenerator(torch.nn.Module):
             x = f(x)
 
         return x
+
+    @torch.no_grad()
+    def inference(self, c, hop_size):
+        """Calculate forward propagation.
+        Args:
+            c (Tensor): Local conditioning auxiliary features (C ,T').
+            hop_size (int): hop length used to train the model.
+            # fold_num (int): number of folds to batchify the given input.
+        Returns:
+            Tensor: Output tensor (B, out_channels, T)
+        """
+        pad_size = self.aux_context_window
+        c = c.to(self.first_conv.weight.device)
+
+        x = torch.randn(1, 1, c.shape[-1] * hop_size).to(self.first_conv.weight.device)
+        c = torch.nn.functional.pad(c, (pad_size, pad_size), 'replicate')
+
+        B, _, T = x.size()
+
+        # perform upsampling
+        if c is not None and self.upsample_net is not None:
+            # B x D x T
+            c = self.upsample_net(c)
+            assert c.size(-1) == x.size(-1), f"{c.size(-1)} vs {x.size(-1)}"
+
+        # encode to hidden representation
+        x = self.first_conv(x)
+        skips = 0
+        for f in self.conv_layers:
+            x, h = f(x, c)
+            skips += h
+        skips *= math.sqrt(1.0 / len(self.conv_layers))
+
+        # apply final layers
+        x = skips
+        for f in self.last_conv_layers:
+            x = f(x)
+        return x
+
+    def pad_tensor(self, x, pad, side='both'):
+        # NB - this is just a quick method i need right now
+        # i.e., it won't generalise to other shapes/dims
+        b, c, t = x.size()
+        total = t + 2 * pad if side == 'both' else t + pad
+        padded = torch.zeros(b, c, total).cuda()
+        if side == 'before' or side == 'both' :
+            padded[:, :, pad:pad+t] = x
+        elif side == 'after':
+            padded[:, :, :t] = x    
+        return padded
 
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
