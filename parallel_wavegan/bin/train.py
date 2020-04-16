@@ -462,7 +462,7 @@ class Trainer(object):
 
             # plot figure and save it
             figname = os.path.join(dirname, f"{idx}.png")
-            fig = plt.figure()
+            fig_wave = plt.figure()
             plt.subplot(2, 1, 1)
             plt.plot(y)
             plt.title("groundtruth speech")
@@ -472,7 +472,31 @@ class Trainer(object):
             plt.tight_layout()
             plt.savefig(figname)
             plt.close()
-            self.writer.add_figure('speech comparison', fig, self.steps )
+            self.writer.add_figure('speech comparison', fig_wave, self.steps )
+
+            # plot spectrogram and save it
+            if self.ap is not None:
+                spectrogram = self.ap.melspectrogram(y)  # pylint: disable=protected-access
+                fig_spec = plt.figure(figsize=(16, 10))
+                plt.imshow(spectrogram, aspect="auto", origin="lower")
+                plt.colorbar()
+                plt.tight_layout()
+                plt.close()
+                spectrogram_ = self.ap.melspectrogram(y_)
+                fig_spec_ = plt.figure(figsize=(16, 10))
+                plt.imshow(spectrogram_, aspect="auto", origin="lower")
+                plt.colorbar()
+                plt.tight_layout()
+                plt.close()
+                spectrogram_diff = abs(spectrogram - spectrogram_)
+                fig_spec_diff = plt.figure(figsize=(16, 10))
+                plt.imshow(spectrogram_diff, aspect="auto", origin="lower")
+                plt.colorbar()
+                plt.tight_layout()
+                plt.close()
+                self.writer.add_figure('spectrogram/real', fig_spec, self.steps)
+                self.writer.add_figure('spectrogram/pred', fig_spec_, self.steps)
+                self.writer.add_figure('spectrogram/diff', fig_spec_diff, self.steps)
 
             # save as wavfile
             y = np.clip(y, -1, 1)
@@ -481,7 +505,8 @@ class Trainer(object):
                      self.config['audio']['sample_rate'], "PCM_16")
             sf.write(figname.replace(".png", "_gen.wav"), y_,
                      self.config['audio']['sample_rate'], "PCM_16")
-
+            self.writer.add_audio('generated_audio', y_, self.steps, sample_rate=self.config["audio"]["sample_rate"])
+        
             if idx >= self.config["num_save_intermediate_results"]:
                 break
 
