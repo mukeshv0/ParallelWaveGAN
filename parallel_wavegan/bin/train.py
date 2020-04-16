@@ -548,6 +548,8 @@ class Collater(object):
                  hop_size=256,
                  aux_context_window=2,
                  use_noise_input=False,
+                 use_noise_augmentation=False,
+                 noise_augmentation_scale=0.5
                  ):
         """Initialize customized collater for PyTorch DataLoader.
 
@@ -556,6 +558,8 @@ class Collater(object):
             hop_size (int): Hop size of auxiliary features.
             aux_context_window (int): Context window size for auxiliary feature conv.
             use_noise_input (bool): Whether to use noise input.
+            use_noise_augmentation (bool): Noise augmentation for conditoning features.
+            noise_augmentation_scale (float): Scale of the augmentation noise.
 
         """
         if batch_max_steps % hop_size != 0:
@@ -566,6 +570,8 @@ class Collater(object):
         self.hop_size = hop_size
         self.aux_context_window = aux_context_window
         self.use_noise_input = use_noise_input
+        self.use_noise_augmentation = use_noise_augmentation
+        self.noise_augmentation_scale = noise_augmentation_scale
 
         # set useful values in random cutting
         self.start_offset = aux_context_window
@@ -604,8 +610,9 @@ class Collater(object):
         y_batch = torch.tensor(y_batch, dtype=torch.float).unsqueeze(1)  # (B, 1, T)
         c_batch = torch.tensor(c_batch, dtype=torch.float).transpose(2, 1)  # (B, C, T')
 
-        # TODO: argument this
-        c_batch += torch.randn_like(c_batch) * 0.5
+        # add a random noise for increased robustness
+        if self.use_noise_augmentation:
+            c_batch += torch.randn_like(c_batch) * self.noise_augmentation_scale
 
         # make input noise signal batch tensor
         if self.use_noise_input:
