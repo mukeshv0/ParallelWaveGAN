@@ -32,6 +32,9 @@ from parallel_wavegan.losses import MultiResolutionSTFTLoss
 from parallel_wavegan.optimizers import RAdam
 from parallel_wavegan.utils import read_hdf5
 
+from TTS.utils.audio import AudioProcessor
+
+
 # set to avoid matplotlib error in CLI environment
 matplotlib.use("Agg")
 
@@ -49,6 +52,7 @@ class Trainer(object):
                  scheduler,
                  config,
                  device=torch.device("cpu"),
+                 ap=None
                  ):
         """Initialize trainer.
 
@@ -62,6 +66,7 @@ class Trainer(object):
             scheduler (dict): Dict of schedulers. It must contrain "generator" and "discriminator" schedulers.
             config (dict): Config dict loaded from yaml format configuration file.
             device (torch.deive): Pytorch device instance.
+            ap (TTS.AudioProcessor): TTS audio processor for visualizations.
 
         """
         self.steps = steps
@@ -77,6 +82,7 @@ class Trainer(object):
         self.finish_train = False
         self.total_train_loss = defaultdict(float)
         self.total_eval_loss = defaultdict(float)
+        self.ap = ap
 
     def run(self):
         """Run training."""
@@ -659,6 +665,9 @@ def main():
     for key, value in config.items():
         logging.info(f"{key} = {value}")
 
+    # init AudioProcessor
+    ap = AudioProcessor(**config['audio'])
+
     # get dataset
     if config["remove_short_samples"]:
         mel_length_threshold = config["batch_max_steps"] // config['audio']['hop_length'] + \
@@ -828,6 +837,7 @@ def main():
         scheduler=scheduler,
         config=config,
         device=device,
+        ap=ap
     )
 
     # load pretrained parameters from checkpoint
