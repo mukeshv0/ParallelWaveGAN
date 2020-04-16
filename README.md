@@ -2,7 +2,9 @@ Parallel WaveGAN fork for Mozilla TTS
 
 This is a fork of the original implementation to sync with Mozilla TTS.
 
-| Models |Dataset | Commit | Audio Sample | Details | | PWGAN | LJSpeech | fca88f9 | soon... | Trained with GT spectrograms| 
+| Models |Dataset | Commit | Audio Sample | Details |
+|--------|--------|--------|--------------|---------|
+| PWGAN | LJSpeech | fca88f9 | soon... | Trained with GT spectrograms| 
 | MelGAN | LJSpeech |[22018e6]((https://github.com/erogol/ParallelWaveGAN/tree/22018e6) | ... | Trained with GT spectrograms|
 
 Basic workflow
