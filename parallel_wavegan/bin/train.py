@@ -505,15 +505,8 @@ class Trainer(object):
                      self.config['audio']['sample_rate'], "PCM_16")
             sf.write(figname.replace(".png", "_gen.wav"), y_,
                      self.config['audio']['sample_rate'], "PCM_16")
-<<<<<<< HEAD
             self.writer.add_audio('generated_audio', y_, self.steps, sample_rate=self.config["audio"]["sample_rate"])
 
-||||||| merged common ancestors
-
-=======
-            self.writer.add_audio('generated_audio', y_, self.steps, sample_rate=self.config["audio"]["sample_rate"])
-        
->>>>>>> spectrogram and wave visualization in eval
             if idx >= self.config["num_save_intermediate_results"]:
                 break
 
@@ -621,8 +614,9 @@ class Collater(object):
         if self.use_noise_augmentation:
             c_batch += torch.randn_like(c_batch) * self.noise_augmentation_scale
 
-        # TODO: argument this
-        c_batch += torch.randn_like(c_batch) * 0.5
+        # add a random noise for increased robustness
+        if self.use_noise_augmentation:
+            c_batch += torch.randn_like(c_batch) * self.noise_augmentation_scale
 
         # make input noise signal batch tensor
         if self.use_noise_input:
