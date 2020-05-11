@@ -173,11 +173,20 @@ class Trainer(object):
         # calculate generator loss
         y_ = self.model["generator"](*x)
         y, y_ = y.squeeze(1), y_.squeeze(1)
-        sc_loss, mag_loss = self.criterion["stft"](y_, y)
-        gen_loss = sc_loss + mag_loss
+        gen_loss = 0
+        # compute aux losses
+        if self.config['use_sc_loss'] or self.config['use_mag_loss']:
+            sc_loss, mag_loss = self.criterion["stft"](y_, y)
+        if self.config['use_sc_loss']:
+            gen_loss += sc_loss
+            self.total_train_loss["train/spectral_convergence_loss"] += sc_loss.item()
+        if self.config['use_mag_loss']:
+            gen_loss += mag_loss
+            self.total_train_loss["train/log_stft_magnitude_loss"] += mag_loss.item()
         if self.steps > self.config["discriminator_train_start_steps"]:
             # keep compatibility
-            gen_loss *= self.config.get("lambda_aux_after_introduce_adv_loss", 1.0)
+            if self.config['use_sc_loss'] or self.config['use_mag_loss']:
+                gen_loss *= self.config.get("lambda_aux_after_introduce_adv_loss", 1.0)
             p_ = self.model["discriminator"](y_.unsqueeze(1))
             if not isinstance(p_, list):
                 # for standard discriminator
@@ -206,9 +215,6 @@ class Trainer(object):
                     adv_loss += self.config["lambda_feat_match"] * fm_loss
 
             gen_loss += self.config["lambda_adv"] * adv_loss
-
-        self.total_train_loss["train/spectral_convergence_loss"] += sc_loss.item()
-        self.total_train_loss["train/log_stft_magnitude_loss"] += mag_loss.item()
         self.total_train_loss["train/generator_loss"] += gen_loss.item()
 
         # update generator
@@ -306,8 +312,16 @@ class Trainer(object):
         y_ = self.model["generator"](*x)
         p_ = self.model["discriminator"](y_)
         y, y_ = y.squeeze(1), y_.squeeze(1)
-        sc_loss, mag_loss = self.criterion["stft"](y_, y)
-        aux_loss = sc_loss + mag_loss
+        # compute aux losses
+        aux_loss = 0
+        if self.config['use_sc_loss'] or self.config['use_mag_loss']:
+            sc_loss, mag_loss = self.criterion["stft"](y_, y)
+        if self.config['use_sc_loss']:
+            aux_loss += sc_loss
+            self.total_eval_loss["train/spectral_convergence_loss"] += sc_loss.item()
+        if self.config['use_mag_loss']:
+            aux_loss += mag_loss
+            self.total_eval_loss["train/log_stft_magnitude_loss"] += mag_loss.item()
         if self.steps > self.config["discriminator_train_start_steps"]:
             # keep compatibility
             aux_loss *= self.config.get("lambda_aux_after_introduce_adv_loss", 1.0)
@@ -360,8 +374,6 @@ class Trainer(object):
 
         # add to total eval loss
         self.total_eval_loss["eval/adversarial_loss"] += adv_loss.item()
-        self.total_eval_loss["eval/spectral_convergence_loss"] += sc_loss.item()
-        self.total_eval_loss["eval/log_stft_magnitude_loss"] += mag_loss.item()
         self.total_eval_loss["eval/generator_loss"] += gen_loss.item()
         self.total_eval_loss["eval/real_loss"] += real_loss.item()
         self.total_eval_loss["eval/fake_loss"] += fake_loss.item()
@@ -468,7 +480,7 @@ class Trainer(object):
             sf.write(figname.replace(".png", "_gen.wav"), y_,
                      self.config['audio']['sample_rate'], "PCM_16")
             self.writer.add_audio('generated_audio', y_, self.steps, sample_rate=self.config["audio"]["sample_rate"])
-        
+
             if idx >= self.config["num_save_intermediate_results"]:
                 break
 
@@ -827,9 +839,12 @@ def main():
         "discriminator": discriminator_class(
             **config["discriminator_params"]).to(device),
     }
+    # if other losses are disabled reset the adv loss lambda
+    if config['use_sc_loss'] or config['use_mag_loss'] == False:
+        config['lambda_adv'] = 1.0
     criterion = {
         "stft": MultiResolutionSTFTLoss(
-            **config["stft_loss_params"]).to(device),
+            **config["stft_loss_params"]).to(device) if config['use_sc_loss'] or config['use_mag_loss'] else None,
         "mse": torch.nn.MSELoss().to(device),
     }
     if config.get("use_feat_match_loss", False):  # keep compatibility
