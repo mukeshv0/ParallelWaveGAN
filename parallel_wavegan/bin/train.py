@@ -183,7 +183,7 @@ class Trainer(object):
         if self.config['use_mag_loss']:
             gen_loss += mag_loss
             self.total_train_loss["train/log_stft_magnitude_loss"] += mag_loss.item()
-        if self.steps > self.config["discriminator_train_start_steps"]:
+        if self.steps >= self.config["discriminator_train_start_steps"]:
             # keep compatibility
             if self.config['use_sc_loss'] or self.config['use_mag_loss']:
                 gen_loss *= self.config.get("lambda_aux_after_introduce_adv_loss", 1.0)
